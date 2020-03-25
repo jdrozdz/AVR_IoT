@@ -1,0 +1,1 @@
+add_executable(lib_network network.c enc28j60.c)

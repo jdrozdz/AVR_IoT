@@ -1,0 +1,1 @@
+add_executable(lib_uart uart.c)
