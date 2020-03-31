@@ -18,7 +18,6 @@
 #define F_CPU 8000000
 #endif
 
-#define DHT_READ_INTERVAL    1500
 #define __DHT_DELAY_SETUP    2000
 
 enum DHT_Status_t {

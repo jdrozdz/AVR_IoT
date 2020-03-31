@@ -5,32 +5,10 @@
 #include "lib/uart/uart.h"
 #include "lib/network/network.h"
 #include "lib/network/enc28j60.h"
+#include "lib/dht22/dht22.h"
 
-#define RELAY_DIR			DDRC
-#define RELAY_PORT			PORTC
-#define RELAY1				PC3
-#define RELAY2				PC2
-#define RELAY3				PC1
-#define RELAY4				PC0
-#define RELAY_DISABLE_ALL()	(RELAY_PORT |= (1 << RELAY1) | (1 << RELAY2) | (1 << RELAY3) | (1 << RELAY4))
-#define RELAY_CONFIG()		(RELAY_DIR |= (1 << RELAY1) | (1 << RELAY2) | (1 << RELAY3) | (1 << RELAY4))
-#define RELAY_ENABLE(x) 	(RELAY_PORT &= ~(1 << x))
-#define RELAY_DISABLE(x) 	(RELAY_PORT |= (1 << x))
-#define RELAY_STATUS(x)		(!(PINC & 1 << x))
-#define RELAY_STATUS_STRING(x)		RELAY_STATUS(x) == 1 ? "<input type='checkbox' data-name='switch-button' checked data-toggle='toggle' data-onstyle='success' data-offstyle='danger' />" : "<input type='checkbox' data-name='switch-button' data-toggle='toggle' data-onstyle='success' data-offstyle='danger' />"
-
-#define HTML_HEADER							"<!DOCTYPE html><html><head>"
-#define HTML_BOOTSTRAP						"<link rel='stylesheet' href='https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css' integrity='sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh' crossorigin='anonymous'>"
-#define HTML_BOOTSTRAP_TOGGLEBTN			"<link href='https://cdn.jsdelivr.net/gh/gitbrent/bootstrap4-toggle@3.6.1/css/bootstrap4-toggle.min.css' rel='stylesheet'>"
-#define HTML_BOOTSTRAP_TOGGLE_BTN_JS		"<script src='https://cdn.jsdelivr.net/gh/gitbrent/bootstrap4-toggle@3.6.1/js/bootstrap4-toggle.min.js'></script>"
-#define HTML_JS_JQUERY						"<script src='https://code.jquery.com/jquery-3.4.1.min.js'></script>"
-#define HTML_JS_CUSTOM1						"<script src='https://intershock.pl/relay.js'></script>"
-#define HTML_CONTENT_START					"</head><body>"
-#define HTML_TABLE_START					"<table class='table'><thead class='thead-dark'><tr><th>Przekaznik 1</th><th>Przekaznik 2</th><th>Przekaznik 3</th><th>Przekaznik 4</th></tr></thead><tbody>"
-#define HTML_TABLE_ROW_START				"<tr>"
-#define HTML_TABLE_ROW_END					"</tr>"
-#define HTML_TABLE_END						"</tbody></table>"
-#define HTML_FOOTER 						"</body></html>"
+#include "lib/conf/relays_mod.h"
+#include "lib/conf/html.h"
 
 #define BUFFER_SIZE 900
 
@@ -39,10 +17,13 @@ static uint8_t myip[4] = {172,254,0,16};
 static uint16_t mywwwport = 80;
 
 volatile uint8_t relays_lock[4] = { 0, 0, 0, 0 };
+double temperature[1];
+double humidity[1];
 
 uint8_t buf[BUFFER_SIZE+1],browser;
 uint16_t plen;
 
+void Configure_Timer0();
 void Configure_Timer2();
 void sendpage(void);
 void header(void);
@@ -52,6 +33,10 @@ void http301();
 
 volatile uint16_t counter = 0;
 volatile uint16_t enabled = 0;
+volatile uint8_t counter0 = 0;
+volatile uint8_t sec0 = 0;
+volatile uint8_t dht_status;
+
 const uint8_t CNT_MAX = 6;
 
 
@@ -60,6 +45,7 @@ int main(void)
 	RELAY_CONFIG();
 	RELAY_DISABLE_ALL();
 
+    // Configure_Timer0();
 	Configure_Timer2();
 	uart_init(115200, 115200);
 
@@ -156,15 +142,28 @@ int main(void)
     	                if(strncmp("/ ",(char*)&(buf[dat_p+4]),2)==0){
     	                	plen=http200();
     	                	header();
-    	                	plen=make_tcp_data(buf, plen, HTML_TABLE_START);
-    	                	plen=make_tcp_data(buf, plen, HTML_TABLE_ROW_START);
-    	                	table_cell(RELAY1);
-    	                	table_cell(RELAY2);
-    	                	table_cell(RELAY3);
-    	                	table_cell(RELAY4);
-    	                	plen=make_tcp_data(buf, plen, HTML_TABLE_ROW_END);
-    	                	plen=make_tcp_data(buf, plen, HTML_TABLE_END);
-    	                	plen=make_tcp_data(buf, plen, HTML_FOOTER);
+                            plen=make_tcp_data(buf, plen, HTML_TABLE_START);
+                            // Display relays status
+                            plen=make_tcp_data(buf, plen, HTML_TABLE_ROW_START);
+                            table_cell(RELAY1);
+                            table_cell(RELAY2);
+                            table_cell(RELAY3);
+                            table_cell(RELAY4);
+                            plen=make_tcp_data(buf, plen, HTML_TABLE_ROW_END);
+                            plen=make_tcp_data(buf, plen, HTML_TABLE_END);
+                            plen=make_tcp_data(buf, plen, HTML_FOOTER);
+
+    	                	// Display temperature and humidity
+                            plen=make_tcp_data(buf, plen, "<div>Status: ");
+                            // plen=make_tcp_data(buf, plen, sec0);
+                            plen=make_tcp_data(buf, plen, "</div>");
+                            plen=make_tcp_data(buf, plen, "<div>Temperatura: ");
+                            // plen=make_tcp_data(buf, plen, temperature[0]);
+                            plen=make_tcp_data(buf, plen, "</div>");
+                            plen=make_tcp_data(buf, plen, "<div>Wilgotnosc: ");
+                            // plen=make_tcp_data(buf, plen, humidity[0]);
+                            plen=make_tcp_data(buf, plen, "</div>");
+
     	                    sendpage();
     	                }
 
@@ -174,6 +173,13 @@ int main(void)
     }
 
     return 0;
+}
+
+void Configure_Timer0() {
+    TCCR0A |= (1 << COM0A0) | (1 << WGM01);
+    TCCR0B |= (1 << CS00) | (1 << CS01) | (1 << CS02);
+    OCR0A = CNT_MAX; // not always
+    TIMSK0 |= (1 << OCIE0A);
 }
 
 void Configure_Timer2() {
@@ -203,8 +209,8 @@ void header(void) {
 }
 
 void table_cell(uint8_t relay) {
-	plen=make_tcp_data(buf, plen, "<td>");
-	plen=make_tcp_data(buf, plen, RELAY_STATUS_STRING(relay));
+    plen=make_tcp_data(buf, plen, "<td>");
+    plen=make_tcp_data(buf, plen, RELAY_STATUS_STRING(relay));
 	plen=make_tcp_data(buf, plen, "</td>");
 }
 
@@ -214,6 +220,17 @@ void sendpage(void) {
 }
 
 // Interrupts
+ISR(TIMER0_COMPA_vect) {
+    if(counter0 <= 6) {
+        counter0++;
+    } else {
+        counter0 = 0;
+        sec0++;
+    }
+
+    sec0 = sec0 <= 59 ? sec0++ : 0;
+}
+
 ISR(TIMER2_COMPA_vect) {
 	if(counter <= 6) {
 		counter++;
