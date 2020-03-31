@@ -23,15 +23,16 @@ uint16_t plen;
 
 void Configure_Timer0();
 void Configure_Timer2();
+
+// HTTP protocol
 void sendpage(void);
-void header(void);
 uint16_t http200();
 uint16_t http301();
 
 
 volatile uint16_t counter = 0;
 volatile uint16_t enabled = 0;
-volatile uint8_t counter0 = 0;
+volatile uint16_t counter0 = 0;
 volatile uint8_t sec0 = 0;
 volatile uint8_t dht_status;
 
@@ -43,12 +44,13 @@ int main(void)
     RELAY_CONFIG();
     RELAY_DISABLE_ALL();
 
-    // Configure_Timer0();
+    Configure_Timer0();
 	Configure_Timer2();
 	uart_init(115200, 115200);
 
 	// Ethernet configuration
 	uint16_t dat_p;
+    char content[100];
 	CLKPR = (1<<CLKPCE);
 	CLKPR = 0;
 	_delay_loop_1(50);
@@ -137,9 +139,15 @@ int main(void)
     	                	sendpage();
 						}
 
+                        if(strstr((char*)&(buf[dat_p]),"?id=5")){
+                            plen=http200();
+                            sprintf(content, "{ \"sec0\": %d, \"counter0\": %d }", sec0, counter0);
+                            plen=make_tcp_data(buf, plen, content);
+                            sendpage();
+                        }
+
     	                if(strncmp("/ ",(char*)&(buf[dat_p+4]),2)==0){
     	                	plen=http200();
-    	                	char content[100];
     	                	sprintf(content, "{ \"r1\": %d, \"r2\": %d, \"r3\": %d, \"r4\": %d }", RELAY_STATUS(RELAY1), RELAY_STATUS(RELAY2), RELAY_STATUS(RELAY3), RELAY_STATUS(RELAY4));
     	                	plen=make_tcp_data(buf, plen, content);
     	                    sendpage();
@@ -154,12 +162,12 @@ int main(void)
 }
 
 void Configure_Timer0() {
-    TCCR0A |= (1 << COM0A0) | (1 << WGM01);
-    TCCR0B |= (1 << CS00) | (1 << CS01) | (1 << CS02);
+    TCCR0A |= (1 << COM0A0) | (1 << WGM02) | (1 << WGM01);
+    TCCR0B |= (1 << CS00) | (1 << CS02);
+    TCNT0 = 0;
     OCR0A = CNT_MAX; // not always
     TIMSK0 |= (1 << OCIE0A);
 }
-
 void Configure_Timer2() {
 	TCCR2A |= (1 << WGM21) | (1 << COM2A1); // Enable CTC Mode
 	TCCR2B |= (1 << CS20) | (1 << CS21) | (1 << CS22); // Enable 1024 prescaler
@@ -168,7 +176,7 @@ void Configure_Timer2() {
 }
 
 uint16_t http200() {
-	return make_tcp_data_pos(buf,0,PSTR("HTTP/1.0 200 OK\r\nContent-Type: application/json\r\n\r\n"));
+	return make_tcp_data_pos(buf,0,PSTR("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"));
 }
 
 uint16_t http301() {
@@ -182,11 +190,17 @@ void sendpage(void) {
 
 // Interrupts
 ISR(TIMER0_COMPA_vect) {
-    if(counter0 <= 6) {
+    if(counter0 < 1000) {
         counter0++;
     } else {
         counter0 = 0;
         sec0++;
+    }
+
+    if(sec0%2) {
+        RELAY_DISABLE(RELAY_TEST);
+    }else{
+        RELAY_ENABLE(RELAY_TEST);
     }
 
     sec0 = sec0 <= 59 ? sec0++ : 0;

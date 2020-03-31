@@ -13,8 +13,9 @@
 #define RELAY2				PC2
 #define RELAY3				PC1
 #define RELAY4				PC0
+#define RELAY_TEST          PC4
 #define RELAY_DISABLE_ALL()	(RELAY_PORT |= (1 << RELAY1) | (1 << RELAY2) | (1 << RELAY3) | (1 << RELAY4))
-#define RELAY_CONFIG()		(RELAY_DIR |= (1 << RELAY1) | (1 << RELAY2) | (1 << RELAY3) | (1 << RELAY4))
+#define RELAY_CONFIG()		(RELAY_DIR |= (1 << RELAY1) | (1 << RELAY2) | (1 << RELAY3) | (1 << RELAY4) | (1 << RELAY_TEST))
 #define RELAY_ENABLE(x) 	(RELAY_PORT &= ~(1 << x))
 #define RELAY_DISABLE(x) 	(RELAY_PORT |= (1 << x))
 #define RELAY_STATUS(x)		(!(PINC & 1 << x))
