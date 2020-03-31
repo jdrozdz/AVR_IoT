@@ -18,6 +18,5 @@
 #define RELAY_ENABLE(x) 	(RELAY_PORT &= ~(1 << x))
 #define RELAY_DISABLE(x) 	(RELAY_PORT |= (1 << x))
 #define RELAY_STATUS(x)		(!(PINC & 1 << x))
-#define RELAY_STATUS_STRING(x)		RELAY_STATUS(x) == 1 ? "<input type='checkbox' data-name='switch-button' checked data-toggle='toggle' data-onstyle='success' data-offstyle='danger' />" : "<input type='checkbox' data-name='switch-button' data-toggle='toggle' data-onstyle='success' data-offstyle='danger' />"
 
 #endif //AVR_RELAYS_MOD_H

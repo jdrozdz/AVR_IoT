@@ -64,6 +64,7 @@ void tcp_synack(uint8_t *buf);
 void init_len_info(uint8_t *buf);
 uint16_t get_tcp_data_ptr(void);
 uint16_t make_tcp_data_pos(uint8_t *buf,uint16_t pos, const prog_char *progmem_s);
+uint16_t make_tcp_data(uint8_t *buf,uint16_t pos, const char *s);
 void tcp_ack(uint8_t *buf);
 void tcp_ack_with_data(uint8_t *buf,uint16_t dlen);
 

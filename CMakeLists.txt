@@ -2,24 +2,24 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8.4)
 SET(CMAKE_SYSTEM_NAME Generic)
 
 #============================================================================================
-PROJECT(AVR)		  		# <-- Prjektname
+PROJECT(AVR)
 
-SET(FILES main.c lib/conf/config.h lib/network/network.c lib/network/enc28j60.c lib/uart/uart.c lib/dht22/dht22.c)
+SET(FILES main.c lib/conf/config.h lib/conf/macros.h lib/conf/relays_mod.h lib/network/network.c lib/network/enc28j60.c lib/uart/uart.c lib/dht22/dht22.c)
 
-SET(DEVICE atmega644pa)			# <-- MCU
-SET(FREQ 8000000)			# <-- MCU-Frequenz
+SET(DEVICE atmega644pa)
+SET(FREQ 8000000)
 
-SET(AVRBIN /usr/bin)		# <-- Toolchain
-SET(AVROBJCOPY avr-objcopy)		# <--     ""
-SET(AVRSIZE avr-size)			# <--     ""
-SET(AVRDUDE avrdude)			# <--     ""
+SET(AVRBIN /usr/bin)
+SET(AVROBJCOPY avr-objcopy)
+SET(AVRSIZE avr-size)
+SET(AVRDUDE avrdude)
 
-SET(PROGRAMMER usbasp)		# <-- Programmertype
-SET(PORT usb)		         	# <-- USB bzw. Schnittstelle z.B. /dev/cu.usbserial....
-# SET(BAUD 57600)	        	# <-- Übertragungsrate
+SET(PROGRAMMER usbasp)
+SET(PORT usb)
+# SET(BAUD 57600)
 
-SET(EEPROM NO)	     	        	# <-- soll eine x.eep Datei erstellt werden?
-SET(FLASH NO)		        	# <-- soll Geflasht werden?
+SET(EEPROM NO)
+SET(FLASH NO)
 
 #============================================================================================
 
