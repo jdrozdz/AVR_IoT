@@ -72,98 +72,74 @@ int main(void)
 	sei();
     while(1) {
     	plen = ENC28J60_PacketReceive(BUFFER_SIZE,buf);
-    	        if(plen==0) continue;
-    	        if(eth_is_arp(buf,plen)) {
-    	            arp_reply(buf);
-    	            continue;
-    	        }
-    	        if(eth_is_ip(buf,plen)==0) continue;
-    	        if(buf[IP_PROTO]==IP_ICMP && buf[ICMP_TYPE]==ICMP_REQUEST) {
-    	            icmp_reply(buf,plen);
-    	            continue;
-    	        }
+        if(plen==0) continue;
+        if(eth_is_arp(buf,plen)) {
+            arp_reply(buf);
+            continue;
+        }
+        if(eth_is_ip(buf,plen)==0) continue;
+        if(buf[IP_PROTO]==IP_ICMP && buf[ICMP_TYPE]==ICMP_REQUEST) {
+            icmp_reply(buf,plen);
+            continue;
+        }
 
-    	        if(buf[IP_PROTO]==IP_TCP && buf[TCP_DST_PORT]==0 && buf[TCP_DST_PORT+1]==mywwwport) {
-    	            if(buf[TCP_FLAGS] & TCP_SYN) {
-    	                tcp_synack(buf);
-    	                continue;
-    	            }
-    	            if(buf[TCP_FLAGS] & TCP_ACK) {
-    	                init_len_info(buf);
-    	                dat_p = get_tcp_data_ptr();
-    	                if(dat_p==0) {
-    	                    if(buf[TCP_FLAGS] & TCP_FIN) tcp_ack(buf);
-    	                    continue;
-    	                }
+        if(buf[IP_PROTO]==IP_TCP && buf[TCP_DST_PORT]==0 && buf[TCP_DST_PORT+1]==mywwwport) {
+            if(buf[TCP_FLAGS] & TCP_SYN) {
+                tcp_synack(buf);
+                continue;
+            }
+            if(buf[TCP_FLAGS] & TCP_ACK) {
+                init_len_info(buf);
+                dat_p = get_tcp_data_ptr();
+                if(dat_p==0) {
+                    if(buf[TCP_FLAGS] & TCP_FIN) tcp_ack(buf);
+                    continue;
+                }
 
-    	                if(strstr((char*)&(buf[dat_p]),"User Agent")) browser=0;
-    	                else if(strstr((char*)&(buf[dat_p]),"MSIE")) browser=1;
-    	                else browser=2;
+                if(strstr((char*)&(buf[dat_p]),"User Agent")) browser=0;
+                else if(strstr((char*)&(buf[dat_p]),"MSIE")) browser=1;
+                else browser=2;
 
-    	                if(strstr((char*)&(buf[dat_p]),"?id=1")){
-                            if(RELAY_STATUS(RELAY1)) {
-                                RELAY_DISABLE(RELAY1);
-                            } else {
-                                RELAY_ENABLE(RELAY1);
-                            }
-                            sprintf(content, "{ \"status\": %d }", RELAY_STATUS(RELAY1));
-                            plen=http200();
-                            plen=make_tcp_data(buf, plen, content);
-    	                	sendpage();
-    	                }
+                if(strstr((char*)&(buf[dat_p]),"?id=1")){
+                    plen=http301();
+                    RELAY_STATUS(RELAY1) ? RELAY_DISABLE(RELAY1) : RELAY_ENABLE(RELAY1);
+                    sendpage();
+                }
 
-    	                if(strstr((char*)&(buf[dat_p]),"?id=2")){
-                            if(RELAY_STATUS(RELAY2)) {
-                                RELAY_DISABLE(RELAY2);
-                            } else {
-                                RELAY_ENABLE(RELAY2);
-                            }
-                            sprintf(content, "{ \"status\": %d }", RELAY_STATUS(RELAY2));
-                            plen=http200();
-                            plen=make_tcp_data(buf, plen, content);
-    	                	sendpage();
-						}
+                if(strstr((char*)&(buf[dat_p]),"?id=2")){
+                    RELAY_STATUS(RELAY2) ? RELAY_DISABLE(RELAY2) : RELAY_ENABLE(RELAY2);
+                    plen=plen=http301();
+                    sendpage();
+                }
 
-    	                if(strstr((char*)&(buf[dat_p]),"?id=3")){
-                            if(RELAY_STATUS(RELAY3)) {
-                                RELAY_DISABLE(RELAY3);
-                            } else {
-                                RELAY_ENABLE(RELAY3);
-                            }
-                            sprintf(content, "{ \"status\": %d }", RELAY_STATUS(RELAY3));
-                            plen=http200();
-                            plen=make_tcp_data(buf, plen, content);
-    	                	sendpage();
-						}
+                if(strstr((char*)&(buf[dat_p]),"?id=3")){
+                    RELAY_STATUS(RELAY3) ? RELAY_DISABLE(RELAY3) : RELAY_ENABLE(RELAY3);
+                    plen=http301();
+                    sendpage();
+                }
 
-    	                if(strstr((char*)&(buf[dat_p]),"?id=4")){
-                            if(RELAY_STATUS(RELAY4)) {
-                                RELAY_DISABLE(RELAY4);
-                            } else {
-                                RELAY_ENABLE(RELAY4);
-                            }
-                            sprintf(content, "{ \"status\": %d }", RELAY_STATUS(RELAY4));
-                            plen=http200();
-                            plen=make_tcp_data(buf, plen, content);
-    	                	sendpage();
-						}
+                if(strstr((char*)&(buf[dat_p]),"?id=4")){
+                    plen=http301();
+                    RELAY_STATUS(RELAY4) ? RELAY_DISABLE(RELAY4) : RELAY_ENABLE(RELAY4);
+                    sendpage();
+                }
 
-                        if(strstr((char*)&(buf[dat_p]),"?id=5")){
-                            plen=http200();
-                            sprintf(content, "{ \"sec0\": %d, \"counter0\": %d }", sec0, counter0);
-                            plen=make_tcp_data(buf, plen, content);
-                            sendpage();
-                        }
+                if(strstr((char*)&(buf[dat_p]),"?id=5")){
+                    plen=http200();
+                    sprintf(content, "{ \"sec0\": %d, \"counter0\": %d }", sec0, counter0);
+                    plen=make_tcp_data(buf, plen, content);
+                    sendpage();
+                }
 
-    	                if(strncmp("/ ",(char*)&(buf[dat_p+4]),2)==0){
-    	                	plen=http200();
-    	                	sprintf(content, "{ \"r1\": %d, \"r2\": %d, \"r3\": %d, \"r4\": %d }", RELAY_STATUS(RELAY1), RELAY_STATUS(RELAY2), RELAY_STATUS(RELAY3), RELAY_STATUS(RELAY4));
-    	                	plen=make_tcp_data(buf, plen, content);
-    	                    sendpage();
-    	                }
+                if(strncmp("/ ",(char*)&(buf[dat_p+4]),2)==0){
+                    plen=http200();
+                    sprintf(content, "{ \"r1\": %d, \"r2\": %d, \"r3\": %d, \"r4\": %d }", RELAY_STATUS(RELAY1), RELAY_STATUS(RELAY2), RELAY_STATUS(RELAY3), RELAY_STATUS(RELAY4));
+                    plen=make_tcp_data(buf, plen, content);
+                    sendpage();
+                }
 
-    	            }
-    	        }
+            }
+        }
 
     }
 
