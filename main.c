@@ -2,11 +2,12 @@
 #include <util/delay.h>
 #include <avr/interrupt.h>
 #include <string.h>
-#include "lib/uart/uart.h"
+#include <stdio.h>
 #include "lib/network/network.h"
 #include "lib/network/enc28j60.h"
 #include "lib/dht22/dht22.h"
 #include "lib/conf/relays_mod.h"
+#include "lib/uart/uart.h"
 
 #define BUFFER_SIZE 900
 
@@ -30,13 +31,13 @@ uint16_t http200();
 uint16_t http301();
 
 
-volatile uint16_t counter = 0;
+volatile uint8_t counter = 0;
 volatile uint16_t enabled = 0;
-volatile uint16_t counter0 = 0;
+volatile uint8_t counter0 = 0;
 volatile uint8_t sec0 = 0;
 volatile uint8_t dht_status;
 
-const uint8_t CNT_MAX = 6;
+const uint8_t CNT_MAX = 12;
 
 
 int main(void)
@@ -46,8 +47,11 @@ int main(void)
 
     Configure_Timer0();
 	Configure_Timer2();
-	uart_init(115200, 115200);
 
+	uart_init(115200, 0);
+
+	uart_puts("Inicjalizacja LAN...", 0);
+	uart_putc('\n', 0);uart_putc('\r', 0);
 	// Ethernet configuration
 	uint16_t dat_p;
     char content[100];
@@ -60,13 +64,10 @@ int main(void)
 	ENC28J60_PhyWrite(PHLCON,0x0476);
 	_delay_loop_1(50);
 	init_network(mymac,myip,mywwwport);
-
-	uart_puts("Smart office", 0);
-	uart_putc('\n', 0);
-	uart_puts("UART 0", 0);
-    uart_puts("Smart office", 1);
-    uart_putc('\n', 1);
-    uart_puts("UART 1", 1);
+	uart_puts("Moje IP to: ", 0);
+	char t[100];
+	sprintf(t, "%d.%d.%d.%d on port %d", myip[0],myip[1],myip[2],myip[3], mywwwport);
+	uart_puts(t,0);
 
 	sei();
     while(1) {
@@ -100,42 +101,50 @@ int main(void)
     	                else browser=2;
 
     	                if(strstr((char*)&(buf[dat_p]),"?id=1")){
-    	                    plen=http301();
                             if(RELAY_STATUS(RELAY1)) {
                                 RELAY_DISABLE(RELAY1);
                             } else {
                                 RELAY_ENABLE(RELAY1);
                             }
+                            sprintf(content, "{ \"status\": %d }", RELAY_STATUS(RELAY1));
+                            plen=http200();
+                            plen=make_tcp_data(buf, plen, content);
     	                	sendpage();
     	                }
 
     	                if(strstr((char*)&(buf[dat_p]),"?id=2")){
-    	                    plen=http301();
                             if(RELAY_STATUS(RELAY2)) {
                                 RELAY_DISABLE(RELAY2);
                             } else {
                                 RELAY_ENABLE(RELAY2);
                             }
+                            sprintf(content, "{ \"status\": %d }", RELAY_STATUS(RELAY2));
+                            plen=http200();
+                            plen=make_tcp_data(buf, plen, content);
     	                	sendpage();
 						}
 
     	                if(strstr((char*)&(buf[dat_p]),"?id=3")){
-                            plen=http301();
                             if(RELAY_STATUS(RELAY3)) {
                                 RELAY_DISABLE(RELAY3);
                             } else {
                                 RELAY_ENABLE(RELAY3);
                             }
+                            sprintf(content, "{ \"status\": %d }", RELAY_STATUS(RELAY3));
+                            plen=http200();
+                            plen=make_tcp_data(buf, plen, content);
     	                	sendpage();
 						}
 
     	                if(strstr((char*)&(buf[dat_p]),"?id=4")){
-                            plen=http301();
                             if(RELAY_STATUS(RELAY4)) {
                                 RELAY_DISABLE(RELAY4);
                             } else {
                                 RELAY_ENABLE(RELAY4);
                             }
+                            sprintf(content, "{ \"status\": %d }", RELAY_STATUS(RELAY4));
+                            plen=http200();
+                            plen=make_tcp_data(buf, plen, content);
     	                	sendpage();
 						}
 
@@ -164,13 +173,14 @@ int main(void)
 void Configure_Timer0() {
     TCCR0A |= (1 << COM0A0) | (1 << WGM02) | (1 << WGM01);
     TCCR0B |= (1 << CS00) | (1 << CS02);
-    TCNT0 = 0;
-    OCR0A = CNT_MAX; // not always
+    TCNT0 = 117;
+    OCR0A = 138; // not always
     TIMSK0 |= (1 << OCIE0A);
 }
 void Configure_Timer2() {
 	TCCR2A |= (1 << WGM21) | (1 << COM2A1); // Enable CTC Mode
 	TCCR2B |= (1 << CS20) | (1 << CS21) | (1 << CS22); // Enable 1024 prescaler
+	TCNT2 = 243;
 	OCR2A = CNT_MAX;
 	TIMSK2 |= (1 << OCIE2A); // Enable interrupt
 }
@@ -190,7 +200,7 @@ void sendpage(void) {
 
 // Interrupts
 ISR(TIMER0_COMPA_vect) {
-    if(counter0 < 1000) {
+    if(counter0 < 113) {
         counter0++;
     } else {
         counter0 = 0;
@@ -216,22 +226,22 @@ ISR(TIMER2_COMPA_vect) {
         }
 	}
 
-	if(enabled == 80 && relays_lock[0] == 0) {
+	if(enabled == 150 && relays_lock[0] == 0) {
 		RELAY_ENABLE(RELAY1);
         relays_lock[0] = 1;
 	}
 
-	if(enabled == 480 && relays_lock[1] == 0) {
+	if(enabled == 350 && relays_lock[1] == 0) {
 		RELAY_ENABLE(RELAY2);
         relays_lock[1] = 1;
 	}
 
-	if(enabled == 880 && relays_lock[2] == 0) {
+	if(enabled == 550 && relays_lock[2] == 0) {
 		RELAY_ENABLE(RELAY3);
         relays_lock[2] = 1;
 	}
 
-	if(enabled == 1200 && relays_lock[3] == 0) {
+	if(enabled == 750 && relays_lock[3] == 0) {
 		RELAY_ENABLE(RELAY4);
         relays_lock[3] = 1;
 	}

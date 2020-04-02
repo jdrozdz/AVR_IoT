@@ -4,10 +4,10 @@ SET(CMAKE_SYSTEM_NAME Generic)
 #============================================================================================
 PROJECT(AVR)
 
-SET(FILES main.c lib/conf/config.h lib/conf/macros.h lib/conf/relays_mod.h lib/network/network.c lib/network/enc28j60.c lib/uart/uart.c lib/dht22/dht22.c)
+SET(FILES main.c lib/conf/config.h lib/conf/macros.h lib/uart/uart.c lib/conf/relays_mod.h lib/network/network.c lib/network/enc28j60.c lib/dht22/dht22.c)
 
 SET(DEVICE atmega644pa)
-SET(FREQ 8000000)
+SET(FREQ 14318180)
 
 SET(AVRBIN /usr/bin)
 SET(AVROBJCOPY avr-objcopy)

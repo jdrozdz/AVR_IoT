@@ -21,18 +21,18 @@ void uart_init(uint32_t baud0, uint32_t baud1){
 	uint16_t _ubrr = 0;
 	if(baud0 >= 2400){
 		_ubrr = ((F_CPU+baud0*8UL) / (16UL*baud0)-1);
-		UBRR0H = (unsigned char)(_ubrr >> 8);
-		UBRR0L = (unsigned char)_ubrr;
-		UCSR0B = (1 << RXEN0) | (1 << TXEN0) | (1 << RXCIE0) | (1 << RXCIE1);
-		UCSR0C = (3 << UCSZ00);
+		UBRR0H |= (unsigned char)(_ubrr >> 8);
+		UBRR0L |= (unsigned char)_ubrr;
+		UCSR0B |= (1 << RXEN0) | (1 << TXEN0) | (1 << RXCIE0) | (1 << RXCIE1);
+		UCSR0C |= (3 << UCSZ00);
 	}
 
 	if(baud1 >= 2400){
 		_ubrr = ((F_CPU+baud1*8UL) / (16UL*baud1)-1);
-		UBRR1H = (unsigned char)(_ubrr >> 8);
-		UBRR1L = (unsigned char)_ubrr;
-		UCSR1B = (1 << RXEN1) | (1 << TXEN1) | (1 << RXCIE1);
-		UCSR1C = (3 << UCSZ10);
+		UBRR1H |= (unsigned char)(_ubrr >> 8);
+		UBRR1L |= (unsigned char)_ubrr;
+		UCSR1B |= (1 << RXEN1) | (1 << TXEN1) | (1 << RXCIE1);
+		UCSR1C |= (3 << UCSZ10);
 	}
 }
 
@@ -64,7 +64,8 @@ void uart_puts_P(const char *data, uint8_t uart){
 
 void uart_putint(int x, int radx, uint8_t uart){
 	char buff[20];
-	itoa(x, buff, radx);
+	// itoa(x, buff, radx);
+	sprintf(buff, "%d", x);
 	uart_puts(buff, uart);
 }
 
